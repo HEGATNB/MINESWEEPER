@@ -7,6 +7,38 @@
 #include <cmath>
 #include <sstream>
 #include <iomanip>
+#include <filesystem>
+#include <windows.h>
+#include <fstream>
+#include <ctime>
+using namespace std;
+
+std::string getResourcePath(const std::string& filename) {
+    static std::string currentDirectory;
+
+    if (currentDirectory.empty()) {
+        DWORD bufferSize = GetCurrentDirectory(0, NULL);
+        if (bufferSize > 0) {
+            std::vector<TCHAR> buffer(bufferSize);
+            if (GetCurrentDirectory(bufferSize, buffer.data())) {
+#ifdef UNICODE
+                int sizeNeeded = WideCharToMultiByte(CP_UTF8, 0, buffer.data(), -1, NULL, 0, NULL, NULL);
+                std::string converted(sizeNeeded, 0);
+                WideCharToMultiByte(CP_UTF8, 0, buffer.data(), -1, &converted[0], sizeNeeded, NULL, NULL);
+                currentDirectory = converted.c_str();
+#else
+                currentDirectory = buffer.data();
+#endif
+                if (!currentDirectory.empty() && currentDirectory.back() == '\\') {
+                    currentDirectory.pop_back();
+                }
+            }
+        }
+    }
+
+    std::string fullPath = currentDirectory + "\\" + filename;
+    return fullPath;
+}
 
 sf::VideoMode desktopMode = sf::VideoMode(1920, 1080);
 const float maxWindowWidth = static_cast<float>(desktopMode.width);
@@ -33,6 +65,7 @@ public:
     void setFlagged(bool val) { val ? flags |= 0x04 : flags &= ~0x04; }
     void setFirstSafe(bool val) { val ? flags |= 0x08 : flags &= ~0x08; }
 };
+
 class Minesweeper {
 private:
     std::vector<Cell> board;
@@ -124,21 +157,23 @@ public:
         levelCompleted = true;
     }
 };
+
 class ResourceManager {
 private:
     struct GameTextures {
         sf::Texture mine;
         sf::Texture flag;
         sf::Texture restartButton;
-        sf::Texture cup;
-        sf::Texture firework1;
-        sf::Texture firework2;
         sf::Texture safeCell;
         sf::Texture settingsBackground;
         sf::Texture menuBackground;
         sf::Texture title;
         sf::Texture gameBackground;
         sf::Texture wheelTexture;
+        sf::Texture equipButton;
+        sf::Texture mineExplosionTexture;
+        sf::Texture metalDetector;
+        sf::Texture bootTexture;
     };
 
 
@@ -158,30 +193,31 @@ private:
 
 public:
     bool loadEssentialResources() {
-        if (!textures.menuBackground.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\background_2.png") ||
-            !textures.title.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\Title.png")) {
+        if (!textures.menuBackground.loadFromFile(getResourcePath("images(textures,sprites)\\background_2.png")) ||
+            !textures.title.loadFromFile(getResourcePath("images(textures,sprites)\\Title.png"))) {
             return false;
         }
         return true;
     }
 
     bool loadMenuResources() {
-        if (!textures.settingsBackground.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\settings_background_sprite.jpg")) {
+        if (!textures.settingsBackground.loadFromFile(getResourcePath("images(textures,sprites)\\settings_background_sprite.jpg"))) {
             return false;
         }
         return true;
     }
 
     bool loadGameResources() {
-        if (!textures.mine.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\mine_texture.png") ||
-            !textures.flag.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\flag_sprite.png") ||
-            !textures.restartButton.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\restart_button.png") ||
-            !textures.cup.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\cup_sprite.png") ||
-            !textures.firework1.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\firework_1.png") ||
-            !textures.firework2.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\firework_2.png") ||
-            !textures.safeCell.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\safe_cell.png") ||
-            !textures.gameBackground.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\game_background.png") ||
-            !textures.wheelTexture.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\wheel_spin.png")) {
+        if (!textures.mine.loadFromFile(getResourcePath("images(textures,sprites)\\mine_texture.png")) ||
+            !textures.flag.loadFromFile(getResourcePath("images(textures,sprites)\\flag_sprite.png")) ||
+            !textures.restartButton.loadFromFile(getResourcePath("images(textures,sprites)\\restart_button.png")) ||
+            !textures.safeCell.loadFromFile(getResourcePath("images(textures,sprites)\\safe_cell.png")) ||
+            !textures.gameBackground.loadFromFile(getResourcePath("images(textures,sprites)\\game_background.png")) ||
+            !textures.wheelTexture.loadFromFile(getResourcePath("images(textures,sprites)\\wheel_spin.png")) ||
+            !textures.equipButton.loadFromFile(getResourcePath("images(textures,sprites)\\equip_button.png")) ||
+            !textures.mineExplosionTexture.loadFromFile(getResourcePath("images(textures,sprites)\\mine_explosion_texture.png")) ||
+            !textures.metalDetector.loadFromFile(getResourcePath("images(textures,sprites)\\metal_detector.png")) ||
+            !textures.bootTexture.loadFromFile(getResourcePath("images(textures,sprites)\\boot_texture.png"))) {
             return false;
         }
         texturesLoaded = true;
@@ -189,8 +225,8 @@ public:
     }
 
     bool loadSounds() {
-        if (!sounds.explosion.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\music+sounds\\explosion_sound.wav") ||
-            !sounds.levelPassed.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\music+sounds\\level_passed_sound.mp3")) {
+        if (!sounds.explosion.loadFromFile(getResourcePath("music+sounds\\explosion_sound.wav")) ||
+            !sounds.levelPassed.loadFromFile(getResourcePath("music+sounds\\level_passed_sound.mp3"))) {
             return false;
         }
         explosionSound.setBuffer(sounds.explosion);
@@ -200,7 +236,7 @@ public:
     }
 
     bool loadMenuMusic() {
-        if (!menuMusic.openFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\music+sounds\\menu_music.mp3")) {
+        if (!menuMusic.openFromFile(getResourcePath("music+sounds\\menu_music.mp3"))) {
             return false;
         }
         menuMusic.setLoop(true);
@@ -209,7 +245,7 @@ public:
     }
 
     bool loadGameMusic() {
-        if (!gameMusic.openFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\music+sounds\\main_game_soundtrack.wav")) {
+        if (!gameMusic.openFromFile(getResourcePath("music+sounds\\main_game_soundtrack.wav"))) {
             return false;
         }
         gameMusic.setLoop(true);
@@ -221,9 +257,6 @@ public:
         textures.mine = sf::Texture();
         textures.flag = sf::Texture();
         textures.restartButton = sf::Texture();
-        textures.cup = sf::Texture();
-        textures.firework1 = sf::Texture();
-        textures.firework2 = sf::Texture();
         textures.safeCell = sf::Texture();
         textures.gameBackground = sf::Texture();
 
@@ -238,6 +271,7 @@ public:
         soundsLoaded = false;
     }
 
+    GameTextures& getTextures() { return textures; }
     const GameTextures& getTextures() const { return textures; }
     const GameSounds& getSounds() const { return sounds; }
     sf::Music& getMenuMusic() { return menuMusic; }
@@ -388,7 +422,7 @@ public:
         frames.clear();
         for (int i = 0; i <= 140; ++i) {
             sf::Texture texture;
-            std::string path = "C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\frame";
+            std::string path = getResourcePath("images(textures,sprites)\\frame");
             if (i < 10) path += "000";
             else if (i < 100) path += "00";
             else path += "0";
@@ -436,7 +470,7 @@ private:
 
 public:
     bool loadTexture() {
-        if (!texture.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\game_background.png")) {
+        if (!texture.loadFromFile(getResourcePath("images(textures,sprites)\\game_background.png"))) {
             return false;
         }
 
@@ -701,64 +735,7 @@ public:
         window.draw(sprite2);
     }
 };
-class ExplosionAnimation {
-private:
-    sf::Texture texture;
-    std::vector<sf::IntRect> frames;
-    sf::Sprite currentFrame;
-    int currentFrameIndex = 0;
-    sf::Clock frameClock;
-    float frameTime = 0.1f;
-    bool isPlaying = false;
-    sf::Vector2f position;
 
-public:
-    ExplosionAnimation() {
-        if (!texture.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\explode_frames.png")) {
-            return;
-        }
-        for (int i = 0; i < 5; ++i) {
-            frames.emplace_back(i * 180, 0, 180, 172);
-        }
-    }
-
-    void start(const sf::Vector2f& pos) {
-        position = pos;
-        currentFrameIndex = 0;
-        isPlaying = true;
-        frameClock.restart();
-        updateFrame();
-    }
-
-    void update() {
-        if (!isPlaying) return;
-
-        if (frameClock.getElapsedTime().asSeconds() >= frameTime) {
-            currentFrameIndex++;
-            if (currentFrameIndex >= frames.size()) {
-                isPlaying = false;
-                return;
-            }
-            frameClock.restart();
-            updateFrame();
-        }
-    }
-
-    void updateFrame() {
-        currentFrame.setTexture(texture);
-        currentFrame.setTextureRect(frames[currentFrameIndex]);
-        currentFrame.setOrigin(90.f, 86.f);
-        currentFrame.setPosition(position);
-    }
-
-    void draw(sf::RenderWindow& window) {
-        if (isPlaying) {
-            window.draw(currentFrame);
-        }
-    }
-
-    bool isActive() const { return isPlaying; }
-};
 class GuideScreen {
 private:
     sf::RectangleShape overlay;
@@ -776,7 +753,7 @@ public:
         : nextButton(sf::Vector2f(40.f, 70.f), sf::Vector2f(0.f, 0.f), "OK", buttonFont) {
         overlay.setFillColor(sf::Color(0, 0, 0, 180));
 
-        if (!font.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\fonts\\Gamepixies.ttf")) {
+        if (!font.loadFromFile(getResourcePath("fonts\\Gamepixies.ttf"))) {
         }
         guideMessages = {
             "Welcome to Minesweeper Guide!\nTo reveal the square, you should click\n left mouse button on it.",
@@ -788,7 +765,7 @@ public:
 
         for (int i = 1; i <= 5; ++i) {
             sf::Texture texture;
-            std::string path = "C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\guide_frame_" + std::to_string(i) + ".png";
+            std::string path = getResourcePath("images(textures,sprites)\\guide_frame_" + std::to_string(i) + ".png");
             if (texture.loadFromFile(path)) {
                 guideTextures.push_back(texture);
             }
@@ -879,6 +856,7 @@ public:
         guideText.setString(text);
     }
 };
+
 class MainMenu {
 private:
     ScrollingBackground background;
@@ -889,11 +867,11 @@ private:
 
 public:
     MainMenu()
-        : background("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\background_2.png"),
-        title("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\Title.png",
+        : background(getResourcePath("images(textures,sprites)\\background_2.png")),
+        title(getResourcePath("images(textures,sprites)\\Title.png"),
             sf::Vector2f(1920.f / 2.f, 200.f)),
         guideScreen(font) {
-        font.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\fonts\\Gamepixies.ttf");
+        font.loadFromFile(getResourcePath("fonts\\Gamepixies.ttf"));
         float buttonWidth = 300.f;
         float buttonHeight = 80.f;
         float startY = 400.f;
@@ -979,7 +957,7 @@ private:
 
 public:
     bool initialize(const sf::Texture& backgroundTexture) {
-        font.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\fonts\\Gamepixies.ttf");
+        font.loadFromFile(getResourcePath("fonts\\Gamepixies.ttf"));
         backgroundSprite.setTexture(backgroundTexture);
         setupButton(backButton, "Back", 400.0f, 650.0f);
         setupSlider(volumeText, volumeBar, volumeSlider, "Volume:", 150.0f);
@@ -1186,7 +1164,7 @@ void drawCell(sf::RenderWindow& window, const Cell& cell, int x, int y,
     }
     else if (cell.isRevealed() && cell.NMines > 0) {
         static sf::Font font;
-        static bool fontLoaded = font.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\fonts\\Gamepixies.ttf");
+        static bool fontLoaded = font.loadFromFile(getResourcePath("fonts\\Gamepixies.ttf"));
 
         sf::Text numberText;
         numberText.setFont(font);
@@ -1224,8 +1202,7 @@ void drawCell(sf::RenderWindow& window, const Cell& cell, int x, int y,
     }
 }
 void drawRestartButton(sf::RenderWindow& window, const sf::Sprite& restartButtonSprite,
-    const sf::Sprite& cupSprite, const sf::Sprite& firework1Sprite,
-    const sf::Sprite& firework2Sprite, bool isVictory, float scale, float offsetX, float offsetY) {
+    bool isVictory, float scale, float offsetX, float offsetY) {
     sf::Sprite temp = restartButtonSprite;
     temp.setScale(200.0f * scale / temp.getTexture()->getSize().x, 200.0f * scale / temp.getTexture()->getSize().y);
     temp.setPosition(offsetX + (static_cast<float>(Width) * 40.0f * scale) / 2.0f - 100.0f * scale,
@@ -1240,15 +1217,13 @@ private:
     sf::CircleShape spinnerDots[8];
     sf::Clock spinnerClock;
     sf::Text loadingText;
-    sf::Font font;
+    sf::Font& font;
     float fadeAlpha = 255.0f;
     bool isActive = false;
 
 public:
-    LoadingScreen() {
+    LoadingScreen(sf::Font& gameFont) : font(gameFont) {
         overlay.setFillColor(sf::Color(0, 0, 0, 200));
-        if (!font.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\fonts\\Gamepixies.ttf")) {
-        }
         loadingText.setFont(font);
         loadingText.setString("Loading...");
         loadingText.setCharacterSize(50);
@@ -1314,7 +1289,7 @@ class ScoreAnimation {
 private:
     sf::RectangleShape background;
     sf::Text scoreText;
-    sf::Font font;
+    sf::Font& font;
 
     int targetScore = 0;
     int currentDisplayScore = 0;
@@ -1328,12 +1303,8 @@ private:
     bool active = false;
 
 public:
-    ScoreAnimation() {
+    ScoreAnimation(sf::Font& gameFont) : font(gameFont) {
         background.setFillColor(sf::Color(0, 0, 0, 180));
-
-        if (!font.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\fonts\\Gamepixies.ttf")) {
-        }
-
         scoreText.setFont(font);
         scoreText.setCharacterSize(120);
         scoreText.setFillColor(sf::Color::White);
@@ -1420,14 +1391,14 @@ private:
     bool isAnimating = false;
     bool targetExpandedState = false;
 
-    sf::Texture mainButtonTex;
-    sf::Texture wheelButtonTex;
-    sf::Texture detectorButtonTex;
-    sf::Texture bootButtonTex;
+    sf::Texture& mainButtonTex;
+    sf::Texture& wheelButtonTex;
+    sf::Texture& detectorButtonTex;
+    sf::Texture& bootButtonTex;
 
     sf::RectangleShape scoreBar;
     sf::Text scoreText;
-    sf::Font font;
+    sf::Font& font;
 
     sf::Vector2f mainButtonPos;
     sf::Vector2f wheelButtonStartPos;
@@ -1459,15 +1430,11 @@ private:
     }
 
 public:
-    GameMenu() {
-        if (!mainButtonTex.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\equip_button.png") ||
-            !wheelButtonTex.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\mine_explosion_texture.png") ||
-            !detectorButtonTex.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\metal_detector.png") ||
-            !bootButtonTex.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\boot_texture.png")) {
-        }
-
-        if (!font.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\fonts\\Gamepixies.ttf")) {
-        }
+    GameMenu(sf::Font& gameFont, sf::Texture& mainTex, sf::Texture& wheelTex,
+        sf::Texture& detectorTex, sf::Texture& bootTex)
+        : font(gameFont), mainButtonTex(mainTex), wheelButtonTex(wheelTex),
+        detectorButtonTex(detectorTex), bootButtonTex(bootTex),
+        scoreAnimation(gameFont) {
 
         mainButton.setTexture(mainButtonTex);
         wheelButton.setTexture(wheelButtonTex);
@@ -1736,6 +1703,76 @@ int main() {
     sf::RenderWindow window(sf::VideoMode(1920, 1080), "Minesweeper", sf::Style::Fullscreen);
     window.setFramerateLimit(60);
 
+    // Загрузка шрифта
+    sf::Font gameFont;
+    if (!gameFont.loadFromFile(getResourcePath("fonts\\Gamepixies.ttf"))) {
+        return -1;
+    }
+
+    // Загрузка текстур для предметов
+    sf::Texture equipButtonTex, wheelTex, detectorTex, bootTex;
+    if (!equipButtonTex.loadFromFile(getResourcePath("images(textures,sprites)\\equip_button.png")) ||
+        !wheelTex.loadFromFile(getResourcePath("images(textures,sprites)\\wheel_spin.png")) ||
+        !detectorTex.loadFromFile(getResourcePath("images(textures,sprites)\\metal_detector.png")) ||
+        !bootTex.loadFromFile(getResourcePath("images(textures,sprites)\\boot_texture.png"))) {
+        return -1;
+    }
+
+    // Создание спрайтов для предметов
+    sf::Sprite mainButton(equipButtonTex);
+    sf::Sprite wheelButton(wheelTex);
+    sf::Sprite detectorButton(detectorTex);
+    sf::Sprite bootButton(bootTex);
+
+    // Настройка спрайтов
+    mainButton.setColor(sf::Color(255, 255, 255, 200));
+    mainButton.setScale(0.25f, 0.25f);
+    wheelButton.setScale(0.125f, 0.125f);
+    detectorButton.setScale(0.25f, 0.25f);
+    bootButton.setScale(0.25f, 0.25f);
+
+    // Создание элементов интерфейса
+    sf::RectangleShape scoreBar(sf::Vector2f(200.f, 30.f));
+    scoreBar.setFillColor(sf::Color(100, 100, 100, 180));
+    scoreBar.setOutlineThickness(2.f);
+    scoreBar.setOutlineColor(sf::Color(50, 50, 50, 200));
+
+    sf::Text scoreText("Score: 0", gameFont, 24);
+    scoreText.setFillColor(sf::Color::White);
+
+    // Переменные для анимации score
+    int targetScore = 0;
+    int currentDisplayScore = 0;
+    int step = 0;
+    sf::Clock animationClock;
+    float animationDuration = 3.0f;
+    const float frameTime = 1.0f / 60.0f;
+    float nextUpdateTime = 0.0f;
+    bool scoreAnimationActive = false;
+    sf::RectangleShape scoreBackground;
+    scoreBackground.setFillColor(sf::Color(0, 0, 0, 180));
+
+    // Переменные для предметов
+    bool wheelClicked = false;
+    bool detectorClicked = false;
+    bool bootClicked = false;
+    bool bootActive = false;
+    bool bootProtectionUsed = false;
+    bool wheelUsed = false;
+    bool detectorUsed = false;
+    bool bootUsed = false;
+    int score = 0;
+
+    // Переменные для анимации меню
+    bool isExpanded = false;
+    float animationProgress = 0.f;
+    bool isAnimating = false;
+    bool targetExpandedState = false;
+    sf::Vector2f mainButtonPos;
+    sf::Vector2f wheelButtonStartPos, wheelButtonTargetPos;
+    sf::Vector2f detectorButtonStartPos, detectorButtonTargetPos;
+    sf::Vector2f bootButtonStartPos, bootButtonTargetPos;
+
     Minesweeper game;
     ResourceManager resources;
     MainMenu mainMenu;
@@ -1743,14 +1780,13 @@ int main() {
     AnimatedBackground background;
     GameBackground gameBackground;
     FadeEffect fadeEffect;
-    LoadingScreen loadingScreen;
+    LoadingScreen loadingScreen(gameFont);
     MusicController musicController;
-    GameMenu gameMenu;
 
+    if (!resources.loadEssentialResources()) return -1;
     if (!resources.loadMenuMusic()) return -1;
     musicController.play(resources.getMenuMusic());
-    
-    bool restartDelay = false;
+
     bool inMenu = true;
     bool inSettings = false;
     bool gameOver = false;
@@ -1767,6 +1803,184 @@ int main() {
     game.reset();
     sf::Clock deltaClock;
     sf::Clock restartDelayClock;
+    bool restartDelay = false;
+
+    // Функция для обновления позиций элементов меню
+    auto updateMenuPositions = [&](const sf::Vector2f& windowSize) {
+        mainButtonPos = sf::Vector2f(
+            windowSize.x / 2 - mainButton.getGlobalBounds().width / 2,
+            windowSize.y - mainButton.getGlobalBounds().height - 20
+        );
+        mainButton.setPosition(mainButtonPos);
+
+        wheelButtonStartPos = sf::Vector2f(
+            mainButtonPos.x + mainButton.getGlobalBounds().width / 2 - wheelButton.getGlobalBounds().width / 2,
+            mainButtonPos.y + mainButton.getGlobalBounds().height / 2 - wheelButton.getGlobalBounds().height / 2
+        );
+        detectorButtonStartPos = wheelButtonStartPos;
+        bootButtonStartPos = wheelButtonStartPos;
+
+        wheelButtonTargetPos = sf::Vector2f(
+            mainButtonPos.x - wheelButton.getGlobalBounds().width - 10,
+            mainButtonPos.y - 10
+        );
+        detectorButtonTargetPos = sf::Vector2f(
+            mainButtonPos.x + mainButton.getGlobalBounds().width / 2 - detectorButton.getGlobalBounds().width / 2,
+            mainButtonPos.y - detectorButton.getGlobalBounds().height - 20
+        );
+        bootButtonTargetPos = sf::Vector2f(
+            mainButtonPos.x + mainButton.getGlobalBounds().width + 10,
+            mainButtonPos.y - 10
+        );
+
+        if (!isAnimating) {
+            if (isExpanded) {
+                wheelButton.setPosition(wheelButtonTargetPos);
+                detectorButton.setPosition(detectorButtonTargetPos);
+                bootButton.setPosition(bootButtonTargetPos);
+            }
+            else {
+                wheelButton.setPosition(wheelButtonStartPos);
+                detectorButton.setPosition(detectorButtonStartPos);
+                bootButton.setPosition(bootButtonStartPos);
+            }
+        }
+        };
+
+    // Функция для обновления счета
+    auto updateScore = [&](int width, int height, int mines) {
+        int maxMines = (width * height) / 2;
+        float minesRatio = static_cast<float>(mines) / maxMines;
+        float coefficient = 1.0f + minesRatio;
+        score += static_cast<int>((width * height) * coefficient);
+        scoreText.setString("Score: " + std::to_string(score));
+
+        // Запуск анимации счета
+        targetScore = score;
+        currentDisplayScore = 0;
+        int totalFrames = static_cast<int>(animationDuration / frameTime);
+        step = std::max(1, static_cast<int>(std::round(static_cast<float>(targetScore) / totalFrames)));
+        scoreAnimationActive = true;
+        animationClock.restart();
+        nextUpdateTime = frameTime;
+        };
+
+    // Функция для отрисовки меню
+    auto drawGameMenu = [&](sf::RenderWindow& window) {
+        sf::Vector2f windowSize = static_cast<sf::Vector2f>(window.getSize());
+        updateMenuPositions(windowSize);
+
+        scoreBar.setPosition(20.f, 20.f);
+        window.draw(scoreBar);
+        scoreText.setPosition(30.f, 20.f);
+        window.draw(scoreText);
+
+        window.draw(mainButton);
+
+        if (isExpanded || isAnimating) {
+            if (wheelButton.getPosition() != wheelButtonStartPos) {
+                sf::RectangleShape wheelBg(sf::Vector2f(
+                    wheelButton.getGlobalBounds().width + 20,
+                    wheelButton.getGlobalBounds().height + 20
+                ));
+                wheelBg.setPosition(wheelButton.getPosition().x - 10, wheelButton.getPosition().y - 10);
+                wheelBg.setFillColor(sf::Color(80, 80, 80, 220));
+                wheelBg.setOutlineThickness(2.f);
+                wheelBg.setOutlineColor(sf::Color(30, 30, 30, 240));
+                window.draw(wheelBg);
+                window.draw(wheelButton);
+            }
+
+            if (detectorButton.getPosition() != detectorButtonStartPos) {
+                sf::RectangleShape detectorBg(sf::Vector2f(
+                    detectorButton.getGlobalBounds().width + 20,
+                    detectorButton.getGlobalBounds().height + 20
+                ));
+                detectorBg.setPosition(detectorButton.getPosition().x - 10, detectorButton.getPosition().y - 10);
+                detectorBg.setFillColor(sf::Color(80, 80, 80, 220));
+                detectorBg.setOutlineThickness(2.f);
+                detectorBg.setOutlineColor(sf::Color(30, 30, 30, 240));
+                window.draw(detectorBg);
+                window.draw(detectorButton);
+            }
+
+            if (bootButton.getPosition() != bootButtonStartPos) {
+                sf::RectangleShape bootBg(sf::Vector2f(
+                    bootButton.getGlobalBounds().width + 20,
+                    bootButton.getGlobalBounds().height + 20
+                ));
+                bootBg.setPosition(bootButton.getPosition().x - 10, bootButton.getPosition().y - 10);
+                bootBg.setFillColor(sf::Color(80, 80, 80, 220));
+                bootBg.setOutlineThickness(2.f);
+                bootBg.setOutlineColor(sf::Color(30, 30, 30, 240));
+                window.draw(bootBg);
+                window.draw(bootButton);
+
+                if (bootActive && !bootProtectionUsed) {
+                    sf::CircleShape indicator(5.f);
+                    indicator.setFillColor(sf::Color::Green);
+                    indicator.setPosition(
+                        bootButton.getPosition().x + bootButton.getGlobalBounds().width - 5.f,
+                        bootButton.getPosition().y + 5.f
+                    );
+                    window.draw(indicator);
+                }
+            }
+
+            if (wheelUsed && wheelButton.getPosition() != wheelButtonStartPos) {
+                sf::RectangleShape overlay(wheelButton.getGlobalBounds().getSize());
+                overlay.setPosition(wheelButton.getPosition());
+                overlay.setFillColor(sf::Color(100, 100, 100, 180));
+                window.draw(overlay);
+            }
+
+            if (detectorUsed && detectorButton.getPosition() != detectorButtonStartPos) {
+                sf::RectangleShape overlay(detectorButton.getGlobalBounds().getSize());
+                overlay.setPosition(detectorButton.getPosition());
+                overlay.setFillColor(sf::Color(100, 100, 100, 180));
+                window.draw(overlay);
+            }
+
+            if (bootUsed && bootButton.getPosition() != bootButtonStartPos) {
+                sf::RectangleShape overlay(bootButton.getGlobalBounds().getSize());
+                overlay.setPosition(bootButton.getPosition());
+                overlay.setFillColor(sf::Color(100, 100, 100, 180));
+                window.draw(overlay);
+            }
+        }
+
+        // Отрисовка анимации счета
+        if (scoreAnimationActive) {
+            float elapsed = animationClock.getElapsedTime().asSeconds();
+            if (elapsed >= animationDuration) {
+                currentDisplayScore = targetScore;
+                scoreAnimationActive = false;
+            }
+            else if (elapsed >= nextUpdateTime) {
+                int framesPassed = static_cast<int>(elapsed / frameTime);
+                int expectedScore = framesPassed * step;
+                currentDisplayScore = std::min(expectedScore, targetScore);
+                nextUpdateTime = (framesPassed + 1) * frameTime;
+            }
+
+            std::ostringstream oss;
+            oss << std::setw(4) << std::setfill('0') << currentDisplayScore;
+            sf::Text animScoreText(oss.str(), gameFont, 120);
+            animScoreText.setFillColor(sf::Color::White);
+            animScoreText.setOutlineColor(sf::Color::Black);
+            animScoreText.setOutlineThickness(4.f);
+
+            sf::FloatRect textRect = animScoreText.getLocalBounds();
+            animScoreText.setOrigin(textRect.left + textRect.width / 2.0f,
+                textRect.top + textRect.height / 2.0f);
+            animScoreText.setPosition(windowSize.x / 2.0f, windowSize.y / 2.0f);
+
+            scoreBackground.setSize(windowSize);
+            window.draw(scoreBackground);
+            window.draw(animScoreText);
+        }
+        };
+
     while (window.isOpen()) {
         float deltaTime = deltaClock.restart().asSeconds();
         if (deltaTime > 0.05f) deltaTime = 0.05f;
@@ -1775,6 +1989,32 @@ int main() {
         musicController.update(deltaTime);
         fadeEffect.update(deltaTime);
         loadingScreen.update(deltaTime);
+
+        // Обновление анимации меню
+        if (isAnimating) {
+            animationProgress += deltaTime * 5.f;
+            if (animationProgress >= 1.f) {
+                animationProgress = 1.f;
+                isAnimating = false;
+                isExpanded = targetExpandedState;
+            }
+
+            auto lerp = [](const sf::Vector2f& a, const sf::Vector2f& b, float t) {
+                float easedT = t < 0.5f ? 2 * t * t : 1 - pow(-2 * t + 2, 2) / 2;
+                return a + (b - a) * easedT;
+                };
+
+            if (targetExpandedState) {
+                wheelButton.setPosition(lerp(wheelButtonStartPos, wheelButtonTargetPos, animationProgress));
+                detectorButton.setPosition(lerp(detectorButtonStartPos, detectorButtonTargetPos, animationProgress));
+                bootButton.setPosition(lerp(bootButtonStartPos, bootButtonTargetPos, animationProgress));
+            }
+            else {
+                wheelButton.setPosition(lerp(wheelButtonTargetPos, wheelButtonStartPos, animationProgress));
+                detectorButton.setPosition(lerp(detectorButtonTargetPos, detectorButtonStartPos, animationProgress));
+                bootButton.setPosition(lerp(bootButtonTargetPos, bootButtonStartPos, animationProgress));
+            }
+        }
 
         sf::Event event;
         while (window.pollEvent(event)) {
@@ -1809,18 +2049,58 @@ int main() {
                 }
             }
 
-            // Always update game menu when not in main menu or settings
-            if (!inMenu && !inSettings) {
-                gameMenu.update(mousePos, event, deltaTime);
+            if (!inMenu && !inSettings && event.type == sf::Event::MouseButtonPressed &&
+                event.mouseButton.button == sf::Mouse::Left) {
+
+                // Обработка клика по главной кнопке меню
+                if (mainButton.getGlobalBounds().contains(mousePos) && !isAnimating) {
+                    if (isExpanded) {
+                        targetExpandedState = false;
+                        isAnimating = true;
+                        animationProgress = 0.f;
+                    }
+                    else {
+                        targetExpandedState = true;
+                        isAnimating = true;
+                        animationProgress = 0.f;
+                    }
+                }
+                // Обработка кликов по предметам
+                else if (isExpanded && !isAnimating) {
+                    if (wheelButton.getGlobalBounds().contains(mousePos) && !wheelUsed) {
+                        wheelClicked = true;
+                        wheelUsed = true;
+                        targetExpandedState = false;
+                        isAnimating = true;
+                        animationProgress = 0.f;
+                    }
+                    else if (detectorButton.getGlobalBounds().contains(mousePos) && !detectorUsed) {
+                        detectorClicked = true;
+                        detectorUsed = true;
+                        targetExpandedState = false;
+                        isAnimating = true;
+                        animationProgress = 0.f;
+                    }
+                    else if (bootButton.getGlobalBounds().contains(mousePos) && !bootUsed) {
+                        bootClicked = true;
+                        bootUsed = true;
+                        bootActive = true;
+                        bootProtectionUsed = false;
+                        targetExpandedState = false;
+                        isAnimating = true;
+                        animationProgress = 0.f;
+                    }
+                }
             }
 
             if (!isLoading && !inMenu && event.type == sf::Event::MouseButtonPressed) {
-                if (gameMenu.getWheelClicked()) {
-                    // Wheel of Fortune logic
+                if (wheelClicked) {
+                    wheelClicked = false;
+                    // Логика колеса фортуны
                     sf::Texture wheelTexture;
                     sf::Texture arrowTexture;
-                    if (!wheelTexture.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\wheel_spin.png") ||
-                        !arrowTexture.loadFromFile("C:\\Users\\hegatnb\\Desktop\\SFML-2.6.1\\Project1\\Project1\\images(textures,sprites)\\cursor.png")) {
+                    if (!wheelTexture.loadFromFile(getResourcePath("images(textures,sprites)\\wheel_spin.png")) ||
+                        !arrowTexture.loadFromFile(getResourcePath("images(textures,sprites)\\cursor.png"))) {
                         continue;
                     }
 
@@ -1920,7 +2200,7 @@ int main() {
 
                                     if (allClear) {
                                         isVictory = true;
-                                        gameMenu.updateScore(Width, Height, Mines);
+                                        updateScore(Width, Height, Mines);
                                         if (!levelPassedSoundPlayed && resources.areSoundsLoaded()) {
                                             musicController.pause();
                                             resources.getLevelPassedSound().play();
@@ -1965,8 +2245,8 @@ int main() {
                         }
                     }
                 }
-
-                if (gameMenu.getDetectorClicked()) {
+                else if (detectorClicked) {
+                    detectorClicked = false;
                     bool hintGiven = false;
                     for (int y = 0; y < Height && !hintGiven; y++) {
                         for (int x = 0; x < Width && !hintGiven; x++) {
@@ -1977,13 +2257,14 @@ int main() {
                         }
                     }
                 }
-
-                if (gameMenu.getBootClicked()) {
-                    // Boot activation is now handled in the GameMenu class
+                else if (bootClicked) {
+                    bootClicked = false;
+                    bootActive = true;
+                    bootProtectionUsed = false;
                 }
             }
 
-            if ((gameOver || (isVictory && gameMenu.shouldShowRestartButton())) &&
+            if ((gameOver || (isVictory && !scoreAnimationActive)) &&
                 event.type == sf::Event::MouseButtonPressed) {
                 float gameWidth = static_cast<float>(Width) * cellSize;
                 float gameHeight = static_cast<float>(Height) * cellSize;
@@ -2006,7 +2287,11 @@ int main() {
                     game.reset();
                     gameOver = false;
                     isVictory = false;
-                    gameMenu.resetItems();
+                    wheelUsed = false;
+                    detectorUsed = false;
+                    bootUsed = false;
+                    bootActive = false;
+                    bootProtectionUsed = false;
                     levelPassedSoundPlayed = false;
                     musicController.resume();
                     restartDelay = true;
@@ -2071,9 +2356,10 @@ int main() {
                             if (event.mouseButton.button == sf::Mouse::Left && !game.getCell(x, y).isFlagged()) {
                                 bool wasProtected = false;
 
-                                if (gameMenu.isBootActive() && game.getCell(x, y).isMine()) {
+                                if (bootActive && !bootProtectionUsed && game.getCell(x, y).isMine()) {
                                     wasProtected = true;
-                                    gameMenu.markBootUsed();
+                                    bootProtectionUsed = true;
+                                    bootActive = false;
                                 }
 
                                 game.revealCell(x, y);
@@ -2091,7 +2377,7 @@ int main() {
                                     game.checkLevelCompletion();
                                     if (game.isLevelCompleted()) {
                                         isVictory = true;
-                                        gameMenu.updateScore(Width, Height, Mines);
+                                        updateScore(Width, Height, Mines);
                                         if (!levelPassedSoundPlayed && resources.areSoundsLoaded()) {
                                             musicController.pause();
                                             resources.getLevelPassedSound().play();
@@ -2153,7 +2439,11 @@ int main() {
                 inMenu = false;
                 game.reset();
                 gameOver = isVictory = false;
-                gameMenu.resetItems();
+                wheelUsed = false;
+                detectorUsed = false;
+                bootUsed = false;
+                bootActive = false;
+                bootProtectionUsed = false;
             }
         }
         else if (inMenu) {
@@ -2188,28 +2478,23 @@ int main() {
                 }
             }
 
-            gameMenu.draw(window);
+            // Отрисовка меню игры
+            drawGameMenu(window);
 
             if (gameOver) {
                 drawRestartButton(window,
                     sf::Sprite(resources.getTextures().restartButton),
-                    sf::Sprite(),
-                    sf::Sprite(),
-                    sf::Sprite(),
                     false, 1.0f, offsetX, offsetY);
             }
-            else if (isVictory && gameMenu.shouldShowRestartButton()) {
+            else if (isVictory && !scoreAnimationActive) {
                 drawRestartButton(window,
                     sf::Sprite(resources.getTextures().restartButton),
-                    sf::Sprite(resources.getTextures().cup),
-                    sf::Sprite(resources.getTextures().firework1),
-                    sf::Sprite(resources.getTextures().firework2),
                     true, 1.0f, offsetX, offsetY);
             }
         }
 
         if (!fadeEffect.isComplete()) {
-            fadeEffect.draw(window);
+
         }
 
         window.display();
